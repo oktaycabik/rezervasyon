@@ -25,7 +25,8 @@ body {
   font-size: 24px;
 }
 .container {
-  max-width: 1300px;
+  max-width: 1200px;
+  overflow-x: auto;
   margin: 20px auto;
   padding: 20px;
   background-color: #ffffff;
@@ -90,7 +91,7 @@ justify-content: center;
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
-  min-width: 180px;
+  min-width: 100px;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

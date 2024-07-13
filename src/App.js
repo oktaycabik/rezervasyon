@@ -16,11 +16,12 @@ function App() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [packageType, setPackageType] = useState('VIP1');
+  const [packageType, setPackageType] = useState('Sinema');
   const [filterDate, setFilterDate] = useState('');
   const [filterReserved, setFilterReserved] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [roomNumber, setRoomNumber] = useState('1'); 
+  const [note, setNote] = useState('');
 
   useEffect(() => {
     const fetchTimeslots = async () => {
@@ -48,8 +49,10 @@ function App() {
       reserved: false, 
       firstName, 
       lastName, 
-      phoneNumber, 
-      packageType 
+      phoneNumber,
+      packageType,
+      roomNumber,
+      note 
     };
     try {
       const docRef = await addDoc(collection(db, 'timeslots'), newSlot);
@@ -62,9 +65,10 @@ function App() {
       setFirstName('');
       setLastName('');
       setPhoneNumber('');
-      setPackageType('VIP1');
+      setPackageType('Sinema');
       setRoomNumber('1');
       setErrorMessage('');
+      setNote('');
     } catch (error) {
       console.error('Error adding timeslot:', error);
       setErrorMessage('Zaman dilimi eklenirken bir hata oluştu.');
@@ -223,11 +227,20 @@ function App() {
               className="form-control"
               required
             >
+              <option value="Sinema">Sinema</option>
               <option value="VIP1">VIP1</option>
               <option value="VIP2">VIP2</option>
               <option value="VIP3">VIP3</option>
               <option value="VIP4">VIP4</option>
             </select>
+          </div>
+          <div className="form-group">
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              className="form-control"
+              placeholder="Not"
+            />
           </div>
           <button type="submit" className="btn btn-primary">Rezervasyon Ekle</button>
         </form>
@@ -259,10 +272,11 @@ function App() {
               <th>Başlangıç Saati</th>
               <th>Bitiş Saati</th>
               <th>Durum</th>
-              <th>Rezervasyonu Yapan</th>
-              <th>Telefon Numarası</th>
+              <th>İsim</th>
+              <th>Tel No</th>
               <th>Paket Türü</th>
-              <th>Oda Numarası</th>
+              <th>Oda No</th>
+              <th>Not Alanı</th>
               <th>İşlem</th>
               <th>Sil</th> {/* Yeni kolon için boş bir th eklendi */}
             </tr>
@@ -301,12 +315,13 @@ function App() {
                       <td>{slot.phoneNumber}</td>
                       <td>{slot.packageType}</td>
                       <td>{slot.roomNumber}</td>
+                      <td>{slot.note}</td>
                       <td>
                         <button
                           onClick={() => handleToggleReservation(slot.id, slot.reserved)}
                           className={`btn ${slot.reserved ? 'btn-danger' : 'btn-success'}`}
                         >
-                          {slot.reserved ? 'Rezervasyonu Kaldır' : 'Rezervasyon Yap'}
+                          {slot.reserved ? 'Boş' : 'Rezerve'}
                         </button>
                       </td>
                       <td>
