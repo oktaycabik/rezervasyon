@@ -3,7 +3,7 @@ import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import './App.css';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-import { FaTrashAlt } from 'react-icons/fa'; // React Icons kütüphanesinden çöp kutusu ikonunu import ettik
+import { FaTrashAlt } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faTimesCircle } from '@fortawesome/free-solid-svg-icons';
 
@@ -15,9 +15,12 @@ function App() {
   const [end, setEnd] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [packageType, setPackageType] = useState('VIP1');
   const [filterDate, setFilterDate] = useState('');
   const [filterReserved, setFilterReserved] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [roomNumber, setRoomNumber] = useState('1'); 
 
   useEffect(() => {
     const fetchTimeslots = async () => {
@@ -38,7 +41,16 @@ function App() {
   const handleAddTimeslot = async (e) => {
     e.preventDefault();
     const dateObj = new Date(day);
-    const newSlot = { date: dateObj.toISOString(), start, end, reserved: false, firstName, lastName };
+    const newSlot = { 
+      date: dateObj.toISOString(), 
+      start, 
+      end, 
+      reserved: false, 
+      firstName, 
+      lastName, 
+      phoneNumber, 
+      packageType 
+    };
     try {
       const docRef = await addDoc(collection(db, 'timeslots'), newSlot);
       const newTimeslot = { ...newSlot, id: docRef.id };
@@ -49,6 +61,9 @@ function App() {
       setEnd('');
       setFirstName('');
       setLastName('');
+      setPhoneNumber('');
+      setPackageType('VIP1');
+      setRoomNumber('1');
       setErrorMessage('');
     } catch (error) {
       console.error('Error adding timeslot:', error);
@@ -59,8 +74,6 @@ function App() {
   const handleToggleReservation = async (id, reserved) => {
     const slotDoc = doc(db, 'timeslots', id);
     const updatedSlot = { reserved: !reserved };
-
-  
 
     try {
       await updateDoc(slotDoc, updatedSlot);
@@ -180,6 +193,42 @@ function App() {
               required
             />
           </div>
+          <div className="form-group">
+            <input
+              type="text"
+              value={phoneNumber}
+              onChange={e => setPhoneNumber(e.target.value)}
+              className="form-control"
+              placeholder="Telefon Numarası"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <select
+              value={roomNumber}
+              onChange={e => setRoomNumber(e.target.value)}
+              className="form-control"
+              required
+            >
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+         
+            </select>
+          </div>
+          <div className="form-group">
+            <select
+              value={packageType}
+              onChange={e => setPackageType(e.target.value)}
+              className="form-control"
+              required
+            >
+              <option value="VIP1">VIP1</option>
+              <option value="VIP2">VIP2</option>
+              <option value="VIP3">VIP3</option>
+              <option value="VIP4">VIP4</option>
+            </select>
+          </div>
           <button type="submit" className="btn btn-primary">Rezervasyon Ekle</button>
         </form>
       </div>
@@ -211,14 +260,17 @@ function App() {
               <th>Bitiş Saati</th>
               <th>Durum</th>
               <th>Rezervasyonu Yapan</th>
+              <th>Telefon Numarası</th>
+              <th>Paket Türü</th>
+              <th>Oda Numarası</th>
               <th>İşlem</th>
-              <th></th> {/* Yeni kolon için boş bir th eklendi */}
+              <th>Sil</th> {/* Yeni kolon için boş bir th eklendi */}
             </tr>
           </thead>
           <TransitionGroup component="tbody">
             {errorMessage ? (
               <tr>
-                <td colSpan="7" className="text-center text-danger">{errorMessage}</td>
+                <td colSpan="9" className="text-center text-danger">{errorMessage}</td>
               </tr>
             ) : (
               filteredTimeslots.length === 0 ? (
@@ -246,6 +298,9 @@ function App() {
                         )}
                       </td>
                       <td>{`${slot.firstName} ${slot.lastName}`}</td>
+                      <td>{slot.phoneNumber}</td>
+                      <td>{slot.packageType}</td>
+                      <td>{slot.roomNumber}</td>
                       <td>
                         <button
                           onClick={() => handleToggleReservation(slot.id, slot.reserved)}
@@ -259,7 +314,7 @@ function App() {
                           onClick={() => handleDeleteReservation(slot.id)}
                           className="icon-btn"
                         >
-                          <FaTrashAlt /> {/* Çöp kutusu ikonu */}
+                          <FaTrashAlt />
                         </button>
                       </td>
                     </tr>
