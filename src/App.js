@@ -3,9 +3,9 @@ import { db } from './firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import './App.css';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
-import { FaTrashAlt } from 'react-icons/fa';
+import { FaTrashAlt,FaSave, FaTimes } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCheckCircle, faTimesCircle } from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faTimesCircle,faEdit  } from '@fortawesome/free-solid-svg-icons';
 
 function App() {
   const [timeslots, setTimeslots] = useState([]);
@@ -22,12 +22,22 @@ function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [roomNumber, setRoomNumber] = useState('1'); 
   const [note, setNote] = useState('');
+  const [newNote, setNewNote] = useState('');
+  const [editingNote, setEditingNote] = useState(null);
 
   useEffect(() => {
     const fetchTimeslots = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, 'timeslots'));
         const timeslotsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  
+        timeslotsData.sort((a, b) => {
+          const dateComparison = new Date(b.date) - new Date(a.date);
+          if (dateComparison !== 0) return dateComparison;
+          if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+          return a.start.localeCompare(b.start);
+        });
+  
         setTimeslots(timeslotsData);
         setFilteredTimeslots(timeslotsData);
         setErrorMessage('');
@@ -57,8 +67,17 @@ function App() {
     try {
       const docRef = await addDoc(collection(db, 'timeslots'), newSlot);
       const newTimeslot = { ...newSlot, id: docRef.id };
-      setTimeslots([...timeslots, newTimeslot]);
-      setFilteredTimeslots([...timeslots, newTimeslot]);
+      const updatedTimeslots = [...timeslots, newTimeslot];
+  
+      updatedTimeslots.sort((a, b) => {
+        const dateComparison = new Date(b.date) - new Date(a.date);
+        if (dateComparison !== 0) return dateComparison;
+        if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+        return a.start.localeCompare(b.start);
+      });
+  
+      setTimeslots(updatedTimeslots);
+      applyFilters(updatedTimeslots, filterDate, filterReserved);
       setDay('');
       setStart('');
       setEnd('');
@@ -74,16 +93,23 @@ function App() {
       setErrorMessage('Zaman dilimi eklenirken bir hata oluştu.');
     }
   };
-
+  
   const handleToggleReservation = async (id, reserved) => {
     const slotDoc = doc(db, 'timeslots', id);
     const updatedSlot = { reserved: !reserved };
-
+  
     try {
       await updateDoc(slotDoc, updatedSlot);
       const updatedTimeslots = timeslots.map(slot => slot.id === id ? { ...slot, ...updatedSlot } : slot);
+  
+      updatedTimeslots.sort((a, b) => {
+        const dateComparison = new Date(b.date) - new Date(a.date);
+        if (dateComparison !== 0) return dateComparison;
+        if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+        return a.start.localeCompare(b.start);
+      });
+  
       setTimeslots(updatedTimeslots);
-
       applyFilters(updatedTimeslots, filterDate, filterReserved);
       setErrorMessage('');
     } catch (error) {
@@ -91,15 +117,22 @@ function App() {
       setErrorMessage('Rezervasyon durumu güncellenirken bir hata oluştu.');
     }
   };
-
+  
   const handleDeleteReservation = async (id) => {
     const slotDoc = doc(db, 'timeslots', id);
-
+  
     try {
       await deleteDoc(slotDoc);
       const updatedTimeslots = timeslots.filter(slot => slot.id !== id);
+  
+      updatedTimeslots.sort((a, b) => {
+        const dateComparison = new Date(b.date) - new Date(a.date);
+        if (dateComparison !== 0) return dateComparison;
+        if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+        return a.start.localeCompare(b.start);
+      });
+  
       setTimeslots(updatedTimeslots);
-
       applyFilters(updatedTimeslots, filterDate, filterReserved);
       setErrorMessage('');
     } catch (error) {
@@ -131,6 +164,13 @@ function App() {
       filtered = filtered.filter(slot => slot.reserved.toString() === selectedReserved);
     }
 
+    filtered.sort((a, b) => {
+      if (a.roomNumber === b.roomNumber) {
+        return a.start.localeCompare(b.start);
+      }
+      return a.roomNumber.localeCompare(b.roomNumber);
+    });
+
     setFilteredTimeslots(filtered);
   };
 
@@ -140,6 +180,37 @@ function App() {
     setFilteredTimeslots(timeslots);
   };
 
+  const handleEditNote = (id, currentNote) => {
+    setEditingNote(id);
+    setNewNote(currentNote);
+  };
+
+  const handleUpdateNote = async (id) => {
+    const slotDoc = doc(db, 'timeslots', id);
+    const updatedSlot = { note: newNote };
+
+    try {
+      await updateDoc(slotDoc, updatedSlot);
+      const updatedTimeslots = timeslots.map(slot => slot.id === id ? { ...slot, note: newNote } : slot);
+  
+      updatedTimeslots.sort((a, b) => {
+        const dateComparison = new Date(b.date) - new Date(a.date);
+        if (dateComparison !== 0) return dateComparison;
+        if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+        return a.start.localeCompare(b.start);
+      });
+  
+      setTimeslots(updatedTimeslots);
+      applyFilters(updatedTimeslots, filterDate, filterReserved);
+      setEditingNote(null);
+      setNewNote('');
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error updating note:', error);
+      setErrorMessage('Not güncellenirken bir hata oluştu.');
+    }
+  };
+  
   return (
     <div className="container">
       <div className="header text-center">
@@ -217,7 +288,6 @@ function App() {
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
-         
             </select>
           </div>
           <div className="form-group">
@@ -235,30 +305,31 @@ function App() {
             </select>
           </div>
           <div className="form-group">
-            <textarea
+            <input
+              type="text"
               value={note}
               onChange={e => setNote(e.target.value)}
               className="form-control"
-              placeholder="Not"
+              placeholder="Not Alanı"
             />
           </div>
-          <button type="submit" className="btn btn-primary">Rezervasyon Ekle</button>
+          <button type="submit" className="btn btn-primary">Ekle</button>
         </form>
       </div>
-      <div className="filter-container text-center mb-3">
+      <div className="filter-container">
         <input
           type="date"
           value={filterDate}
           onChange={handleFilterChange}
           className="form-control"
-          placeholder="Filtre Tarih"
+          placeholder="Tarih Filtrele"
         />
         <select
           value={filterReserved}
           onChange={handleReservedFilterChange}
           className="form-control mt-2"
         >
-          <option value="">Tümü</option>
+          <option value="">Hepsi</option>
           <option value="true">Rezerve</option>
           <option value="false">Boş</option>
         </select>
@@ -278,7 +349,7 @@ function App() {
               <th>Oda No</th>
               <th>Not Alanı</th>
               <th>İşlem</th>
-              <th>Sil</th> {/* Yeni kolon için boş bir th eklendi */}
+              <th>Sil</th>
             </tr>
           </thead>
           <TransitionGroup component="tbody">
@@ -292,7 +363,7 @@ function App() {
                 
                 </tr>
               ) : (
-                filteredTimeslots.slice(0).reverse().map(slot => (
+                filteredTimeslots.map(slot => (
                   <CSSTransition key={slot.id} timeout={500} classNames="fade">
                     <tr>
                       <td>{new Date(slot.date).toLocaleDateString('tr-TR')}</td>
@@ -315,7 +386,40 @@ function App() {
                       <td>{slot.phoneNumber}</td>
                       <td>{slot.packageType}</td>
                       <td>{slot.roomNumber}</td>
-                      <td>{slot.note}</td>
+                      <td>
+                        {editingNote === slot.id ? (
+                          <div className="d-flex align-items-center">
+                            <input
+                              type="text"
+                              value={newNote}
+                              onChange={e => setNewNote(e.target.value)}
+                              className="form-control"
+                            />
+                            <button
+                              className="btn btn-success btn-sm ml-1"
+                              onClick={() => handleUpdateNote(slot.id)}
+                            >
+                              <FaSave />
+                            </button>
+                            <button
+                              className="btn btn-danger btn-sm ml-1"
+                              onClick={() => setEditingNote(null)}
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="updateBtn">
+                            {slot.note}
+                            <button
+                              className="btn btn-primarynew btn-sm ml-2"
+                              onClick={() => handleEditNote(slot.id, slot.note)}
+                            >
+                              <FontAwesomeIcon icon={faEdit} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <button
                           onClick={() => handleToggleReservation(slot.id, slot.reserved)}
