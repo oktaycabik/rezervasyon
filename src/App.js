@@ -32,7 +32,7 @@ function App() {
         const timeslotsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
   
         timeslotsData.sort((a, b) => {
-          const dateComparison = new Date(b.date) - new Date(a.date);
+          const dateComparison = new Date(a.date) - new Date(b.date);
           if (dateComparison !== 0) return dateComparison;
           if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
           return a.start.localeCompare(b.start);
@@ -70,7 +70,7 @@ function App() {
       const updatedTimeslots = [...timeslots, newTimeslot];
   
       updatedTimeslots.sort((a, b) => {
-        const dateComparison = new Date(b.date) - new Date(a.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
         return a.start.localeCompare(b.start);
@@ -103,7 +103,7 @@ function App() {
       const updatedTimeslots = timeslots.map(slot => slot.id === id ? { ...slot, ...updatedSlot } : slot);
   
       updatedTimeslots.sort((a, b) => {
-        const dateComparison = new Date(b.date) - new Date(a.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
         return a.start.localeCompare(b.start);
@@ -126,7 +126,7 @@ function App() {
       const updatedTimeslots = timeslots.filter(slot => slot.id !== id);
   
       updatedTimeslots.sort((a, b) => {
-        const dateComparison = new Date(b.date) - new Date(a.date);
+        const dateComparison = new Date(a.date) - new Date(b.date);
         if (dateComparison !== 0) return dateComparison;
         if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
         return a.start.localeCompare(b.start);
@@ -371,12 +371,12 @@ function App() {
                       <td>{slot.end}</td>
                       <td>
                         {slot.reserved ? (
-                          <span className="reserved">
+                          <span className="empty">
                             <FontAwesomeIcon icon={faCheckCircle} className="icon" />
                              Rezerve
                           </span>
                         ) : (
-                          <span className="empty">
+                          <span className="reserved">
                             <FontAwesomeIcon icon={faTimesCircle} className="icon" />
                              Boş
                           </span>
@@ -425,7 +425,7 @@ function App() {
                           onClick={() => handleToggleReservation(slot.id, slot.reserved)}
                           className={`btn ${slot.reserved ? 'btn-danger' : 'btn-success'}`}
                         >
-                          {slot.reserved ? 'Boş' : 'Rezerve'}
+                          {slot.reserved ? 'İptal' : 'Rezerve'}
                         </button>
                       </td>
                       <td>
