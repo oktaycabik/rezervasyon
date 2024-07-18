@@ -6,8 +6,12 @@ import { CSSTransition, TransitionGroup } from 'react-transition-group';
 import { FaTrashAlt,FaSave, FaTimes } from 'react-icons/fa';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheckCircle, faTimesCircle,faEdit  } from '@fortawesome/free-solid-svg-icons';
+import SingIn from './SingIn';
 
+const PASSWORD_KEY = 'auth_password';
+const CORRECT_PASSWORD = 'o9Im6nPIvksizbV1'; // Şifrenizi burada belirleyin
 function App() {
+  const [authenticated, setAuthenticated] = useState(false);
   const [timeslots, setTimeslots] = useState([]);
   const [filteredTimeslots, setFilteredTimeslots] = useState([]);
   const [day, setDay] = useState('');
@@ -24,30 +28,44 @@ function App() {
   const [note, setNote] = useState('');
   const [newNote, setNewNote] = useState('');
   const [editingNote, setEditingNote] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingPackageType, setEditingPackageType] = useState(null);
+  const [newPackageType, setNewPackageType] = useState('');
+  const [itemsPerPage] = useState(10); // Maksimum kart sayısı
+
 
   useEffect(() => {
-    const fetchTimeslots = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'timeslots'));
-        const timeslotsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-  
-        timeslotsData.sort((a, b) => {
-          const dateComparison = new Date(a.date) - new Date(b.date);
-          if (dateComparison !== 0) return dateComparison;
-          if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
-          return a.start.localeCompare(b.start);
-        });
-  
-        setTimeslots(timeslotsData);
-        setFilteredTimeslots(timeslotsData);
-        setErrorMessage('');
-      } catch (error) {
-        console.error('Error fetching timeslots:', error);
-        setErrorMessage('Veriler yüklenirken bir hata oluştu.');
-      }
-    };
-    fetchTimeslots();
+    const storedPassword = localStorage.getItem(PASSWORD_KEY);
+    if (storedPassword === CORRECT_PASSWORD) {
+      setAuthenticated(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      const fetchTimeslots = async () => {
+        try {
+          const querySnapshot = await getDocs(collection(db, 'timeslots'));
+          const timeslotsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+          timeslotsData.sort((a, b) => {
+            const dateComparison = new Date(a.date) - new Date(b.date);
+            if (dateComparison !== 0) return dateComparison;
+            if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+            return a.start.localeCompare(b.start);
+          });
+
+          setTimeslots(timeslotsData);
+          setFilteredTimeslots(timeslotsData);
+          setErrorMessage('');
+        } catch (error) {
+          console.error('Error fetching timeslots:', error);
+          setErrorMessage('Veriler yüklenirken bir hata oluştu.');
+        }
+      };
+      fetchTimeslots();
+    }
+  }, [authenticated]);
 
   const handleAddTimeslot = async (e) => {
     e.preventDefault();
@@ -210,9 +228,52 @@ function App() {
       setErrorMessage('Not güncellenirken bir hata oluştu.');
     }
   };
+
+  const handleEditPackageType = (id, currentPackageType) => {
+    setEditingPackageType(id);
+    setNewPackageType(currentPackageType);
+  };
+  
+  const handleUpdatePackageType = async (id) => {
+    const slotDoc = doc(db, 'timeslots', id);
+    const updatedSlot = { packageType: newPackageType };
+  
+    try {
+      await updateDoc(slotDoc, updatedSlot);
+      const updatedTimeslots = timeslots.map(slot => slot.id === id ? { ...slot, packageType: newPackageType } : slot);
+  
+      updatedTimeslots.sort((a, b) => {
+        const dateComparison = new Date(a.date) - new Date(b.date);
+        if (dateComparison !== 0) return dateComparison;
+        if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+        return a.start.localeCompare(b.start);
+      });
+  
+      setTimeslots(updatedTimeslots);
+      applyFilters(updatedTimeslots, filterDate, filterReserved);
+      setEditingPackageType(null);
+      setNewPackageType('');
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Error updating package type:', error);
+      setErrorMessage('Paket türü güncellenirken bir hata oluştu.');
+    }
+  };
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTimeslots = filteredTimeslots.slice(indexOfFirstItem, indexOfLastItem);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
   
   return (
     <div className="container">
+     
+        {!authenticated ? (
+        <SingIn onAuthenticated={() => setAuthenticated(true)} />
+      ) : (
+        <> 
+      
       <div className="header text-center">
         <h1>Rezervasyon</h1>
       </div>
@@ -336,116 +397,191 @@ function App() {
         <button onClick={handleClearFilter} className="btn btn-secondary mt-2">Filtreyi Temizle</button>
       </div>
       <div className="table-container">
-        <table className="table table-striped">
-          <thead>
+      <table className="table table-striped">
+  <thead>
+    <tr>
+      <th>Tarih</th>
+      <th>Başlangıç Saati</th>
+      <th>Bitiş Saati</th>
+      <th>Durum</th>
+      <th>İsim</th>
+      <th>Tel No</th>
+      <th>Paket Türü</th>
+      <th>Oda No</th>
+      <th>Not Alanı</th>
+      <th>İşlem</th>
+      <th>Sil</th>
+    </tr>
+  </thead>
+  <TransitionGroup component="tbody">
+    {errorMessage ? (
+      <tr>
+        <td colSpan="11" className="text-center text-danger">{errorMessage}</td>
+      </tr>
+    ) : (
+      filteredTimeslots.length === 0 ? (
+        <tr>
+        
+        </tr>
+      ) : (
+        currentTimeslots.map(slot => (
+          <CSSTransition key={slot.id} timeout={500} classNames="fade">
             <tr>
-              <th>Tarih</th>
-              <th>Başlangıç Saati</th>
-              <th>Bitiş Saati</th>
-              <th>Durum</th>
-              <th>İsim</th>
-              <th>Tel No</th>
-              <th>Paket Türü</th>
-              <th>Oda No</th>
-              <th>Not Alanı</th>
-              <th>İşlem</th>
-              <th>Sil</th>
+              <td>{new Date(slot.date).toLocaleDateString('tr-TR')}</td>
+              <td>{slot.start}</td>
+              <td>{slot.end}</td>
+              <td>
+                {slot.reserved ? (
+                  <span className="empty">
+                    <FontAwesomeIcon icon={faCheckCircle} className="icon" />
+                    Rezerve
+                  </span>
+                ) : (
+                  <span className="reserved">
+                    <FontAwesomeIcon icon={faTimesCircle} className="icon" />
+                    Boş
+                  </span>
+                )}
+              </td>
+              <td>{`${slot.firstName} ${slot.lastName}`}</td>
+              <td>{slot.phoneNumber}</td>
+              <td>
+                {editingPackageType === slot.id ? (
+                  <div className="d-flex align-items-center">
+                    <select
+                      value={newPackageType}
+                      onChange={(e) => setNewPackageType(e.target.value)}
+                      className="form-control"
+                    >
+                      <option value="Sinema">Sinema</option>
+                      <option value="VIP1">VIP1</option>
+                      <option value="VIP2">VIP2</option>
+                      <option value="VIP3">VIP3</option>
+                      <option value="VIP4">VIP4</option>
+                    </select>
+                    <button
+                      className="btn btn-success btn-sm ml-1"
+                      onClick={() => handleUpdatePackageType(slot.id)}
+                    >
+                      <FaSave />
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm ml-1"
+                      onClick={() => setEditingPackageType(null)}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="updateBtn">
+                    {slot.packageType}
+                    <button
+                      className="btn btn-primarynew btn-sm ml-2"
+                      onClick={() => handleEditPackageType(slot.id, slot.packageType)}
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </button>
+                  </div>
+                )}
+              </td>
+              <td>{slot.roomNumber}</td>
+              <td>
+                {editingNote === slot.id ? (
+                  <div className="d-flex align-items-center">
+                    <input
+                      type="text"
+                      value={newNote}
+                      onChange={e => setNewNote(e.target.value)}
+                      className="form-control"
+                    />
+                    <button
+                      className="btn btn-success btn-sm ml-1"
+                      onClick={() => handleUpdateNote(slot.id)}
+                    >
+                      <FaSave />
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm ml-1"
+                      onClick={() => setEditingNote(null)}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="updateBtn">
+                    {slot.note}
+                    <button
+                      className="btn btn-primarynew btn-sm ml-2"
+                      onClick={() => handleEditNote(slot.id, slot.note)}
+                    >
+                      <FontAwesomeIcon icon={faEdit} />
+                    </button>
+                  </div>
+                )}
+              </td>
+              <td>
+                <button
+                  onClick={() => handleToggleReservation(slot.id, slot.reserved)}
+                  className={`btn ${slot.reserved ? 'btn-danger' : 'btn-success'}`}
+                >
+                  {slot.reserved ? 'İptal' : 'Rezerve'}
+                </button>
+              </td>
+              <td>
+                <button
+                  onClick={() => handleDeleteReservation(slot.id)}
+                  className="icon-btn"
+                >
+                  <FaTrashAlt />
+                </button>
+              </td>
             </tr>
-          </thead>
-          <TransitionGroup component="tbody">
-            {errorMessage ? (
-              <tr>
-                <td colSpan="9" className="text-center text-danger">{errorMessage}</td>
-              </tr>
-            ) : (
-              filteredTimeslots.length === 0 ? (
-                <tr>
-                
-                </tr>
-              ) : (
-                filteredTimeslots.map(slot => (
-                  <CSSTransition key={slot.id} timeout={500} classNames="fade">
-                    <tr>
-                      <td>{new Date(slot.date).toLocaleDateString('tr-TR')}</td>
-                      <td>{slot.start}</td>
-                      <td>{slot.end}</td>
-                      <td>
-                        {slot.reserved ? (
-                          <span className="empty">
-                            <FontAwesomeIcon icon={faCheckCircle} className="icon" />
-                             Rezerve
-                          </span>
-                        ) : (
-                          <span className="reserved">
-                            <FontAwesomeIcon icon={faTimesCircle} className="icon" />
-                             Boş
-                          </span>
-                        )}
-                      </td>
-                      <td>{`${slot.firstName} ${slot.lastName}`}</td>
-                      <td>{slot.phoneNumber}</td>
-                      <td>{slot.packageType}</td>
-                      <td>{slot.roomNumber}</td>
-                      <td>
-                        {editingNote === slot.id ? (
-                          <div className="d-flex align-items-center">
-                            <input
-                              type="text"
-                              value={newNote}
-                              onChange={e => setNewNote(e.target.value)}
-                              className="form-control"
-                            />
-                            <button
-                              className="btn btn-success btn-sm ml-1"
-                              onClick={() => handleUpdateNote(slot.id)}
-                            >
-                              <FaSave />
-                            </button>
-                            <button
-                              className="btn btn-danger btn-sm ml-1"
-                              onClick={() => setEditingNote(null)}
-                            >
-                              <FaTimes />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="updateBtn">
-                            {slot.note}
-                            <button
-                              className="btn btn-primarynew btn-sm ml-2"
-                              onClick={() => handleEditNote(slot.id, slot.note)}
-                            >
-                              <FontAwesomeIcon icon={faEdit} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => handleToggleReservation(slot.id, slot.reserved)}
-                          className={`btn ${slot.reserved ? 'btn-danger' : 'btn-success'}`}
-                        >
-                          {slot.reserved ? 'İptal' : 'Rezerve'}
-                        </button>
-                      </td>
-                      <td>
-                        <button
-                          onClick={() => handleDeleteReservation(slot.id)}
-                          className="icon-btn"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </td>
-                    </tr>
-                  </CSSTransition>
-                ))
-              )
-            )}
-          </TransitionGroup>
-        </table>
+          </CSSTransition>
+        ))
+      )
+    )}
+  </TransitionGroup>
+</table>
+
       </div>
+              {/* Pagination */}
+              <Pagination
+        itemsPerPage={itemsPerPage}
+        totalItems={filteredTimeslots.length}
+        paginate={paginate}
+        currentPage={currentPage}
+      />
+      </>
+      )}
     </div>
+    
   );
 }
+
+const Pagination = ({ itemsPerPage, totalItems, paginate, currentPage }) => {
+  const pageNumbers = [];
+
+  for (let i = 1; i <= Math.ceil(totalItems / itemsPerPage); i++) {
+    pageNumbers.push(i);
+  }
+
+  return (
+    <div className="pagination-container">
+      <ul className="pagination-list">
+        {pageNumbers.map(number => (
+          <li key={number} className="pagination-item">
+            <button
+              onClick={() => paginate(number)}
+              className={`pagination-button ${currentPage === number ? 'active' : ''}`}
+            >
+              {number}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 
 export default App;
