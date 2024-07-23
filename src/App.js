@@ -31,7 +31,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingPackageType, setEditingPackageType] = useState(null);
   const [newPackageType, setNewPackageType] = useState('');
-  const [itemsPerPage] = useState(10); // Maksimum kart sayısı
+  const [itemsPerPage] = useState(15); // Maksimum kart sayısı
 
 
   useEffect(() => {
