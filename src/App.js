@@ -31,7 +31,9 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingPackageType, setEditingPackageType] = useState(null);
   const [newPackageType, setNewPackageType] = useState('');
-  const [itemsPerPage] = useState(15); // Maksimum kart sayısı
+  const [editingRoomNumber, setEditingRoomNumber] = useState(null);
+  const [newRoomNumber, setNewRoomNumber] = useState('');
+  const [itemsPerPage] = useState(20); // Maksimum kart sayısı
 
 
   useEffect(() => {
@@ -260,6 +262,37 @@ function App() {
     }
   };
 
+  const handleEditRoomNumber = (id, currentRoomNumber) => {
+    setEditingRoomNumber(id);
+    setNewRoomNumber(currentRoomNumber);
+};
+
+const handleUpdateRoomNumber = async (id) => {
+    const slotDoc = doc(db, 'timeslots', id);
+    const updatedSlot = { roomNumber: newRoomNumber };
+
+    try {
+        await updateDoc(slotDoc, updatedSlot);
+        const updatedTimeslots = timeslots.map(slot => slot.id === id ? { ...slot, roomNumber: newRoomNumber } : slot);
+        
+        updatedTimeslots.sort((a, b) => {
+            const dateComparison = new Date(a.date) - new Date(b.date);
+            if (dateComparison !== 0) return dateComparison;
+            if (a.roomNumber !== b.roomNumber) return a.roomNumber.localeCompare(b.roomNumber);
+            return a.start.localeCompare(b.start);
+        });
+
+        setTimeslots(updatedTimeslots);
+        applyFilters(updatedTimeslots, filterDate, filterReserved);
+        setEditingRoomNumber(null);
+        setNewRoomNumber('');
+        setErrorMessage('');
+    } catch (error) {
+        console.error('Error updating room number:', error);
+        setErrorMessage('Oda numarası güncellenirken bir hata oluştu.');
+    }
+};
+
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentTimeslots = filteredTimeslots.slice(indexOfFirstItem, indexOfLastItem);
@@ -484,7 +517,43 @@ function App() {
                   </div>
                 )}
               </td>
-              <td>{slot.roomNumber}</td>
+              <td>
+              {editingRoomNumber === slot.id ? (
+                <div className="d-flex align-items-center">
+                  <select
+                    value={newRoomNumber}
+                    onChange={e => setNewRoomNumber(e.target.value)}
+                    className="form-control"
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                  <button
+                    className="btn btn-success btn-sm ml-1"
+                    onClick={() => handleUpdateRoomNumber(slot.id)}
+                  >
+                    <FaSave />
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm ml-1"
+                    onClick={() => setEditingRoomNumber(null)}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              ) : (
+                <div className="updateBtn">
+                  {slot.roomNumber}
+                  <button
+                    className="btn btn-primarynew btn-sm ml-2"
+                    onClick={() => handleEditRoomNumber(slot.id, slot.roomNumber)}
+                  >
+                    <FontAwesomeIcon icon={faEdit} />
+                  </button>
+                </div>
+              )}
+            </td>
               <td>
                 {editingNote === slot.id ? (
                   <div className="d-flex align-items-center">
